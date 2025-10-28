@@ -1,0 +1,47 @@
+# Scanner-specific gitignore
+# Add these entries to your main .gitignore
+
+# Scanner output
+out/
+scanner.log
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+scanner-env/
+venv/
+ENV/
+
+# Environment files
+.env
+scanner.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reports (keep if you want to commit them)
+# out/report.html
+# out/report.pdf
+# out/report.json
+# out/findings.json
+# out/sbom.json
+
+# Raw scan data
+out/raw/
+
+# Temporary files
+*.tmp
+*.temp
+

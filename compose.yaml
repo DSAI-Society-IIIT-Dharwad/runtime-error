@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: home-net-guardian-backend
+    environment:
+      - CAPTURE_MODE=${CAPTURE_MODE:-pcap}
+      - PCAP_PATH=${PCAP_PATH:-/app/data/sample.pcap}
+      - IFACE=${IFACE:-eth0}
+      - DB_URL=sqlite:///./guardian.db
+      - WS_ORIGIN=${WS_ORIGIN:-http://localhost:5173}
+      - ANOMALY_CONTAMINATION=${ANOMALY_CONTAMINATION:-0.02}
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8000:8000"
+    networks:
+      - guardian-net
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: home-net-guardian-frontend
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000}
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    ports:
+      - "5173:5173"
+    networks:
+      - guardian-net
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  guardian-net:
+    driver: bridge
+
+volumes:
+  guardian-data:
+    driver: local

@@ -1,0 +1,45 @@
+{
+  "targets": [
+    "https://example.com",
+    "https://api.example.com"
+  ],
+  "output_dir": "out",
+  "scan_opts": {
+    "zap": {
+      "auth": {
+        "username": "testuser",
+        "password": "testpass",
+        "login_url": "https://example.com/login"
+      },
+      "openapi_url": "https://example.com/api/openapi.json",
+      "ajax_crawl": true
+    },
+    "nuclei": {
+      "templates": "http,ssl,dns",
+      "severity": ["critical", "high", "medium"],
+      "rate_limit": 150,
+      "timeout": 5
+    },
+    "nmap": {
+      "flags": "-sV -T4",
+      "script": null
+    },
+    "trivy": {
+      "target": "fs",
+      "path": ".",
+      "timeout": 600
+    }
+  },
+  "controls": {
+    "max_concurrency": 4,
+    "passive_only": true,
+    "exclude": [
+      "/logout",
+      "/admin/delete",
+      "/api/v1/reset"
+    ],
+    "timeout": 3600,
+    "rate_limit": 100
+  }
+}
+

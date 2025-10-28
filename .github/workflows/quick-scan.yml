@@ -1,0 +1,326 @@
+name: Security Quick Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required: true
+        default: 'https://example.com'
+
+env:
+  NUCLEI_VERSION: '3.1.0'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Nuclei Security Scan
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Nuclei
+        run: |
+          wget -q https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip
+          unzip -q nuclei_${NUCLEI_VERSION}_linux_amd64.zip
+          sudo mv nuclei /usr/local/bin/
+          nuclei -version
+      
+      - name: Update Nuclei templates
+        run: |
+          nuclei -update-templates -silent
+      
+      - name: Determine target URL
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "url=${{ github.event.inputs.target_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ secrets.TARGET_URL }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Nuclei passive scan
+        id: nuclei_scan
+        run: |
+          mkdir -p scan-results
+          
+          # Run nuclei with passive templates only
+          nuclei \
+            -u "${{ steps.target.outputs.url }}" \
+            -severity critical,high,medium \
+            -tags http,ssl,dns,network \
+            -exclude-tags intrusive,dos,fuzzing,brute-force \
+            -json \
+            -output scan-results/nuclei-results.json \
+            -silent \
+            -rate-limit 150 \
+            -timeout 10 \
+            -retries 2 || true
+          
+          # Check if results file exists and has content
+          if [ ! -f scan-results/nuclei-results.json ]; then
+            echo "[]" > scan-results/nuclei-results.json
+          fi
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Enrich findings with KEV
+        id: enrich
+        run: |
+          python3 << 'EOF'
+          import json
+          import requests
+          import sys
+          
+          # Load Nuclei results
+          try:
+              with open('scan-results/nuclei-results.json', 'r') as f:
+                  content = f.read().strip()
+                  if not content:
+                      findings = []
+                  else:
+                      # Parse JSONL format
+                      findings = []
+                      for line in content.split('\n'):
+                          if line.strip():
+                              findings.append(json.loads(line))
+          except Exception as e:
+              print(f"Error loading findings: {e}")
+              findings = []
+          
+          # Load CISA KEV catalog
+          try:
+              response = requests.get(
+                  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+                  timeout=30
+              )
+              kev_data = response.json()
+              kev_cves = {vuln['cveID'].upper() for vuln in kev_data.get('vulnerabilities', [])}
+          except Exception as e:
+              print(f"Warning: Could not load KEV catalog: {e}")
+              kev_cves = set()
+          
+          # Enrich findings
+          high_severity_count = 0
+          kev_count = 0
+          critical_findings = []
+          
+          for finding in findings:
+              severity = finding.get('info', {}).get('severity', 'unknown').upper()
+              
+              # Extract CVE IDs
+              cves = []
+              classification = finding.get('info', {}).get('classification', {})
+              if 'cve-id' in classification:
+                  cve_ids = classification['cve-id']
+                  if isinstance(cve_ids, list):
+                      cves.extend(cve_ids)
+                  else:
+                      cves.append(cve_ids)
+              
+              # Check against KEV
+              is_kev = any(cve.upper() in kev_cves for cve in cves)
+              finding['is_kev'] = is_kev
+              finding['cves'] = cves
+              
+              if is_kev:
+                  kev_count += 1
+                  critical_findings.append(finding)
+              
+              if severity in ['HIGH', 'CRITICAL']:
+                  high_severity_count += 1
+                  if not is_kev:
+                      critical_findings.append(finding)
+          
+          # Save enriched results
+          with open('scan-results/enriched-results.json', 'w') as f:
+              json.dump(findings, f, indent=2)
+          
+          # Generate summary
+          summary = {
+              'total_findings': len(findings),
+              'high_severity_count': high_severity_count,
+              'kev_count': kev_count,
+              'critical_findings': critical_findings[:10]  # Top 10
+          }
+          
+          with open('scan-results/summary.json', 'w') as f:
+              json.dump(summary, f, indent=2)
+          
+          # Output for GitHub Actions
+          print(f"::set-output name=total_findings::{len(findings)}")
+          print(f"::set-output name=high_severity::{high_severity_count}")
+          print(f"::set-output name=kev_count::{kev_count}")
+          
+          # Determine if we should fail the build
+          if kev_count > 0 or high_severity_count > 0:
+              print(f"\n❌ FAIL: Found {kev_count} KEV vulnerabilities and {high_severity_count} high/critical findings")
+              sys.exit(1)
+          else:
+              print(f"\n✅ PASS: No critical vulnerabilities found")
+              sys.exit(0)
+          EOF
+        continue-on-error: true
+      
+      - name: Generate markdown report
+        if: always()
+        run: |
+          python3 << 'EOF'
+          import json
+          from datetime import datetime
+          
+          # Load summary
+          try:
+              with open('scan-results/summary.json', 'r') as f:
+                  summary = json.load(f)
+          except:
+              summary = {
+                  'total_findings': 0,
+                  'high_severity_count': 0,
+                  'kev_count': 0,
+                  'critical_findings': []
+              }
+          
+          # Generate markdown report
+          report = f"""# 🛡️ Security Scan Report
+          
+          **Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}  
+          **Target:** ${{ steps.target.outputs.url }}  
+          **Scan Type:** Passive (PR Quick Scan)
+          
+          ## 📊 Summary
+          
+          | Metric | Count |
+          |--------|-------|
+          | Total Findings | {summary['total_findings']} |
+          | High/Critical | {summary['high_severity_count']} |
+          | **KEV (Known Exploited)** | **{summary['kev_count']}** |
+          
+          """
+          
+          if summary['kev_count'] > 0:
+              report += f"""
+          ## ⚠️ CRITICAL ALERT: Known Exploited Vulnerabilities
+          
+          **{summary['kev_count']} vulnerabilities found that are actively exploited in the wild!**
+          
+          These findings are listed in CISA's Known Exploited Vulnerabilities (KEV) catalog and require immediate remediation.
+          
+          """
+          
+          if summary['critical_findings']:
+              report += "## 🔥 Top Priority Findings\n\n"
+              
+              for idx, finding in enumerate(summary['critical_findings'][:5], 1):
+                  template = finding.get('template-id', 'unknown')
+                  name = finding.get('info', {}).get('name', 'Untitled')
+                  severity = finding.get('info', {}).get('severity', 'unknown').upper()
+                  is_kev = '🔴 KEV' if finding.get('is_kev') else ''
+                  matched = finding.get('matched-at', finding.get('host', ''))
+                  cves = ', '.join(finding.get('cves', []))
+                  
+                  report += f"""
+          ### {idx}. {name} {is_kev}
+          
+          - **Severity:** `{severity}`
+          - **Template:** `{template}`
+          - **Location:** `{matched}`
+          """
+                  
+                  if cves:
+                      report += f"- **CVE(s):** `{cves}`\n"
+                  
+                  report += "\n"
+          
+          report += """
+          ## 📋 Next Steps
+          
+          1. Review all findings in the artifacts section
+          2. Prioritize KEV vulnerabilities for immediate patching
+          3. Address high/critical severity findings
+          4. Run full scan in non-production environment
+          
+          ## 📥 Artifacts
+          
+          - `nuclei-results.json` - Raw scan results
+          - `enriched-results.json` - KEV-enriched results
+          - `summary.json` - Scan summary statistics
+          
+          ---
+          
+          *Generated by Enterprise Security Scanner*
+          """
+          
+          with open('scan-results/REPORT.md', 'w') as f:
+              f.write(report)
+          
+          print(report)
+          EOF
+      
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: scan-results/
+          retention-days: 30
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const fs = require('fs');
+            
+            let reportContent = '# 🛡️ Security Scan Report\n\nScan results are being processed...';
+            
+            try {
+              reportContent = fs.readFileSync('scan-results/REPORT.md', 'utf8');
+            } catch (error) {
+              console.log('Could not read report:', error);
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reportContent
+            });
+      
+      - name: Check scan results
+        if: always()
+        run: |
+          # Load summary
+          if [ -f scan-results/summary.json ]; then
+            KEV_COUNT=$(jq -r '.kev_count' scan-results/summary.json)
+            HIGH_COUNT=$(jq -r '.high_severity_count' scan-results/summary.json)
+            
+            echo "KEV Vulnerabilities: $KEV_COUNT"
+            echo "High/Critical Findings: $HIGH_COUNT"
+            
+            if [ "$KEV_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
+              echo "❌ Build failed due to security findings"
+              exit 1
+            else
+              echo "✅ No critical security findings"
+              exit 0
+            fi
+          else
+            echo "⚠️ Summary not found, passing by default"
+            exit 0
+          fi
+

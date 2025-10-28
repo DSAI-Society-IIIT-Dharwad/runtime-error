@@ -1,0 +1,142 @@
+# Makefile for Enterprise Security Scanner
+
+.PHONY: help install verify scan scan-passive scan-ui clean test
+
+# Default target
+help:
+	@echo "Enterprise Security Scanner - Make Targets"
+	@echo "==========================================="
+	@echo ""
+	@echo "Setup:"
+	@echo "  make install        Install Python dependencies"
+	@echo "  make verify         Verify tool installations"
+	@echo ""
+	@echo "Scanning:"
+	@echo "  make scan           Run full scan (requires TARGETS env var)"
+	@echo "  make scan-passive   Run passive scan"
+	@echo "  make scan-ui        Launch Streamlit UI"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make update-tools   Update scanner tools"
+	@echo "  make clean          Clean output directories"
+	@echo "  make test           Run tests"
+	@echo ""
+	@echo "Examples:"
+	@echo "  TARGETS=https://example.com make scan"
+	@echo "  TARGETS=https://example.com make scan-passive"
+
+# Installation
+install:
+	pip install -r scanner/requirements.txt
+	@echo "✅ Python dependencies installed"
+	@echo "⚠️  Don't forget to install external tools (ZAP, Nuclei, Nmap, Trivy)"
+	@echo "   See scanner/INSTALLATION.md for details"
+
+# Verify installations
+verify:
+	@echo "Verifying tool installations..."
+	@zap.sh -version 2>/dev/null && echo "✅ ZAP installed" || echo "❌ ZAP not found"
+	@nuclei -version 2>/dev/null && echo "✅ Nuclei installed" || echo "❌ Nuclei not found"
+	@nmap --version 2>/dev/null | head -n1 && echo "✅ Nmap installed" || echo "❌ Nmap not found"
+	@trivy --version 2>/dev/null && echo "✅ Trivy installed" || echo "❌ Trivy not found"
+	@python -c "import scanner; print('✅ Scanner package available')" 2>/dev/null || echo "❌ Scanner package not found"
+
+# Update tools
+update-tools:
+	@echo "Updating scanner tools..."
+	nuclei -update-templates
+	trivy image --download-db-only
+	@echo "✅ Tools updated"
+
+# Scanning targets
+scan:
+ifndef TARGETS
+	@echo "❌ Error: TARGETS environment variable not set"
+	@echo "Usage: TARGETS=https://example.com make scan"
+	@exit 1
+endif
+	python -m scanner.orchestrator --targets $(TARGETS) --verbose
+
+scan-passive:
+ifndef TARGETS
+	@echo "❌ Error: TARGETS environment variable not set"
+	@echo "Usage: TARGETS=https://example.com make scan-passive"
+	@exit 1
+endif
+	python -m scanner.orchestrator --targets $(TARGETS) --passive-only --verbose
+
+scan-ui:
+	streamlit run streamlit_app.py
+
+# CLI examples
+scan-example:
+	@echo "Running example scan (passive mode)..."
+	python scanner/cli.py \
+		--targets https://example.com \
+		--passive-only \
+		--max-concurrency 2 \
+		--output-dir out/example-scan \
+		--verbose
+
+scan-config:
+	@echo "Running scan from config file..."
+	python scanner/cli.py --config config.example.json --verbose
+
+# Maintenance
+clean:
+	@echo "Cleaning output directories..."
+	rm -rf out/*
+	rm -rf scanner/__pycache__
+	rm -rf scanner/engines/__pycache__
+	rm -rf scanner/enrich/__pycache__
+	rm -rf scanner/report/__pycache__
+	rm -f scanner.log
+	@echo "✅ Cleaned"
+
+clean-all: clean
+	@echo "Removing virtual environment..."
+	rm -rf scanner-env
+	@echo "✅ All cleaned"
+
+# Testing
+test:
+	@echo "Running tests..."
+	python -m pytest scanner/tests/ -v
+
+# Development
+dev-install: install
+	pip install pytest black flake8 mypy
+	@echo "✅ Development dependencies installed"
+
+lint:
+	@echo "Running linters..."
+	flake8 scanner/ --max-line-length=120 --ignore=E203,W503
+	black scanner/ --check
+	mypy scanner/ --ignore-missing-imports
+
+format:
+	@echo "Formatting code..."
+	black scanner/
+	@echo "✅ Code formatted"
+
+# Documentation
+docs:
+	@echo "Opening documentation..."
+	@command -v xdg-open >/dev/null && xdg-open SECURITY_SCANNER_README.md || open SECURITY_SCANNER_README.md
+
+# Quick start
+quickstart: verify
+	@echo ""
+	@echo "🛡️  Enterprise Security Scanner - Quick Start"
+	@echo "==========================================="
+	@echo ""
+	@echo "✅ Tools verified"
+	@echo ""
+	@echo "Next steps:"
+	@echo "1. Set target: export TARGETS=https://example.com"
+	@echo "2. Run scan: make scan-passive"
+	@echo "3. View report: open out/report.html"
+	@echo ""
+	@echo "Or use the interactive UI: make scan-ui"
+	@echo ""
+

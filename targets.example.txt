@@ -1,0 +1,15 @@
+# Target list for scanner
+# One target per line
+# Lines starting with # are ignored
+
+https://example.com
+https://api.example.com
+https://app.example.com
+
+# You can also specify IP addresses
+# 192.168.1.1
+# 10.0.0.1
+
+# Or hostnames
+# testserver.local
+

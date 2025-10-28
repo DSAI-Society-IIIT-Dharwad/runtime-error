@@ -1,0 +1,29 @@
+# Enterprise Security Scanner - Core Dependencies
+
+# Web requests and API calls
+requests>=2.31.0
+
+# Report generation
+weasyprint>=60.0  # HTML to PDF conversion
+# Alternative: playwright>=1.40.0  # Uncomment if preferring Playwright for PDF
+
+# Optional: Enhanced PDF rendering
+# Uncomment if using Playwright:
+# playwright>=1.40.0
+# After install, run: playwright install chromium
+
+# Streamlit UI (optional)
+streamlit>=1.30.0
+
+# CLI and utilities
+click>=8.1.7
+
+# Data processing
+python-dateutil>=2.8.2
+
+# Note: External tools required (install separately):
+# - OWASP ZAP: https://www.zaproxy.org/download/
+# - Nuclei: https://github.com/projectdiscovery/nuclei
+# - Nmap: https://nmap.org/download.html
+# - Trivy: https://aquasecurity.github.io/trivy/
+
