@@ -1,0 +1,97 @@
+╔═══════════════════════════════════════════════════════════╗
+║         HOME NET GUARDIAN - QUICK START GUIDE            ║
+╚═══════════════════════════════════════════════════════════╝
+
+🚀 GETTING STARTED (3 STEPS)
+─────────────────────────────────────────────────────────────
+
+1. Make sure Docker Desktop is running
+   └─ Look for Docker icon in system tray (bottom-right)
+
+2. Double-click: LAUNCH.bat
+   └─ Wait 1-2 minutes for first-time setup
+
+3. Open browser: http://localhost:5173
+   └─ You should see the Home Net Guardian dashboard
+
+
+📋 COMMON TASKS
+─────────────────────────────────────────────────────────────
+
+▶ Start Application:
+  • Double-click LAUNCH.bat
+  • Or run: docker-compose up
+
+▶ Stop Application:
+  • Press Ctrl+C in the terminal
+  • Or double-click STOP.bat
+  • Or run: docker-compose down
+
+▶ View Running Status:
+  • Run: docker-compose ps
+
+▶ See Logs:
+  • Run: docker-compose logs -f
+
+
+🌐 ACCESS POINTS
+─────────────────────────────────────────────────────────────
+
+Frontend:  http://localhost:5173
+Backend:   http://localhost:8000
+API Docs:  http://localhost:8000/docs
+
+
+❓ TROUBLESHOOTING
+─────────────────────────────────────────────────────────────
+
+Problem: Nothing happens when I run LAUNCH.bat
+→ Check if Docker Desktop is running
+
+Problem: "Port already in use" error
+→ Another program is using port 8000 or 5173
+→ Close other applications or restart computer
+
+Problem: Containers won't start
+→ Run: docker-compose down
+→ Then: docker-compose up --build
+
+Problem: Changes not showing
+→ Stop containers
+→ Run: docker-compose up --build
+
+
+💡 PRO TIPS
+─────────────────────────────────────────────────────────────
+
+• First build takes 2-5 minutes (downloads dependencies)
+• Later builds are much faster (30 seconds)
+• Keep Docker Desktop running while using the app
+• Use Ctrl+C to gracefully stop the application
+• Check DOCKER-GUIDE.md for detailed explanations
+
+
+📞 QUICK COMMANDS CHEAT SHEET
+─────────────────────────────────────────────────────────────
+
+docker-compose up          → Start (with logs)
+docker-compose up -d       → Start in background
+docker-compose down        → Stop and remove
+docker-compose restart     → Restart everything
+docker-compose logs        → View all logs
+docker-compose logs -f     → Follow logs live
+docker-compose ps          → Check status
+docker-compose build       → Rebuild images
+
+
+🎯 REMEMBER
+─────────────────────────────────────────────────────────────
+
+1. Docker Desktop must be running
+2. First time takes longer (be patient!)
+3. LAUNCH.bat does everything for you
+4. Press Ctrl+C to stop
+5. Check DOCKER-GUIDE.md for more help
+
+═══════════════════════════════════════════════════════════════
+

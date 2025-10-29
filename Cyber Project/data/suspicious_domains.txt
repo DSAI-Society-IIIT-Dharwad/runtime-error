@@ -1,0 +1,23 @@
+# Suspicious Domains List
+# Known malware C2 domains (simulated)
+malware-c2.com
+evil-botnet.net
+cryptominer-pool.org
+ransomware-payment.com
+phishing-site.tk
+data-exfil.ml
+command-control.ga
+tunnel-dns.com
+backdoor-server.cf
+trojan-downloader.click
+
+# DGA-like domains
+xkj2h4k5j6h.com
+qwe123rty456.net
+zxc789vbn012.org
+
+# Suspicious TLDs
+suspicious.tk
+malicious.ml
+dangerous.ga
+harmful.cf

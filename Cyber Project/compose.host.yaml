@@ -1,0 +1,24 @@
+# Docker Compose override for host networking mode
+# This allows the container to see real network traffic
+
+services:
+  backend:
+    network_mode: host
+    environment:
+      - CAPTURE_MODE=live
+      - IFACE=\Device\NPF_{83F1D56F-42A3-40B1-B625-016F896BBCC5}  # Your Wi-Fi interface (10.65.148.75)
+      - API_HOST=127.0.0.1
+      - API_PORT=8000
+    privileged: true  # Required for packet capture
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    networks: []  # Remove networks since we're using host networking
+    
+  frontend:
+    network_mode: host
+    environment:
+      - VITE_API_URL=http://127.0.0.1:8000
+      - VITE_WS_URL=ws://127.0.0.1:8000
+    ports: []  # Remove port mapping since we're using host networking
+    networks: []  # Remove networks since we're using host networking

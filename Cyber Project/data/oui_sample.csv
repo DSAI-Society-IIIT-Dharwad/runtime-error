@@ -1,0 +1,36 @@
+# OUI Sample Database
+# Format: MAC_PREFIX<tab>VENDOR_NAME
+00:11:22	Dell Inc.
+aa:bb:cc	Apple Inc.
+64:16:66	Amazon Technologies Inc.
+b0:72:bf	Roku, Inc.
+84:16:f9	TP-Link Technologies Co.
+00:00:5e	IANA
+00:50:56	VMware, Inc.
+08:00:27	Oracle VirtualBox
+b8:27:eb	Raspberry Pi Foundation
+dc:a6:32	Raspberry Pi Trading Ltd
+28:d2:44	Google Inc.
+f4:f5:d8	Google Inc.
+3c:37:86	Amazon Technologies Inc.
+68:54:f5	Amazon Technologies Inc.
+a4:b1:c1	Amazon Technologies Inc.
+d0:03:4b	Apple Inc.
+f0:18:98	Apple Inc.
+00:24:9b	Action Star Enterprise
+18:03:73	Dell Inc.
+34:17:eb	Dell Inc.
+48:4d:7e	Dell Inc.
+ec:f4:bb	Dell Technologies
+30:9c:23	Micro-Star International
+4c:ed:fb	ASUSTek Computer Inc.
+5c:cf:7f	Espressif Inc.
+60:01:94	Espressif Inc.
+c0:06:c3	TP-Link Technologies
+c0:25:e9	TP-Link Technologies
+ac:84:c6	TP-Link Technologies
+b0:a7:b9	TP-Link Technologies
+e8:9f:80	Belkin International Inc.
+ec:71:db	Ring LLC
+bc:14:01	Google Nest
+d8:bb:c1	Google Inc.
